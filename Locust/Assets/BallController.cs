@@ -8,8 +8,9 @@ using UnityEngine.InputSystem;
 public class BallController : MonoBehaviour
 {
     [Header("Input")]
-    private InputSystemActions inputActions;
+    [SerializeField] private InputActionAsset inputActionAsset;
     private Vector2 moveInput;
+    private InputActionMap playerActionMap;
 
     [Header("Movement Settings")]
     [SerializeField] private float moveForce = 500f;
@@ -21,26 +22,49 @@ public class BallController : MonoBehaviour
 
     private void OnEnable()
     {
-        // Instancia o InputActions gerado automaticamente
-        if (inputActions == null)
+        // Carrega o asset de input se não foi atribuído no inspector
+        if (inputActionAsset == null)
         {
-            inputActions = new InputSystemActions();
+            inputActionAsset = Resources.Load<InputActionAsset>("InputSystem_Actions");
+            if (inputActionAsset == null)
+            {
+                Debug.LogError("BallController: InputActionAsset não encontrado! Atribua 'InputSystem_Actions' no Inspector ou coloque em Assets/Resources/");
+                enabled = false;
+                return;
+            }
         }
-        
-        inputActions.Player.Enable();
-        
+
+        // Obtém o action map do Player
+        playerActionMap = inputActionAsset.FindActionMap("Player");
+        if (playerActionMap == null)
+        {
+            Debug.LogError("BallController: Action Map 'Player' não encontrado no InputActionAsset!");
+            enabled = false;
+            return;
+        }
+
+        playerActionMap.Enable();
+
         // Conecta callbacks para o input de movimento
-        inputActions.Player.Move.performed += OnMovePerformed;
-        inputActions.Player.Move.canceled += OnMoveCanceled;
+        var moveAction = playerActionMap.FindAction("Move");
+        if (moveAction != null)
+        {
+            moveAction.performed += OnMovePerformed;
+            moveAction.canceled += OnMoveCanceled;
+        }
     }
 
     private void OnDisable()
     {
-        if (inputActions != null)
+        if (playerActionMap != null)
         {
-            inputActions.Player.Move.performed -= OnMovePerformed;
-            inputActions.Player.Move.canceled -= OnMoveCanceled;
-            inputActions.Player.Disable();
+            var moveAction = playerActionMap.FindAction("Move");
+            if (moveAction != null)
+            {
+                moveAction.performed -= OnMovePerformed;
+                moveAction.canceled -= OnMoveCanceled;
+            }
+            playerActionMap.Disable();
         }
     }
 
